@@ -1875,9 +1875,12 @@ class Instruction:
     def referenced_addresses(self):
         '''Return all addresses that are read, written, or branched
         by the instruction.  For indirect or relative addresses, only
-        the target is returned.'''
+        the target is returned.  Also includes any immediate value that
+        is formatted as a symbol name, so that the printer emits the
+        symbol definition it references.'''
         addresses = []
-        names = ('saddrp', 'saddr', 'reltarget', 'addr11', 'addr16', 'addr16p', 'sfr', 'sfrp')
+        names = ('saddrp', 'saddr', 'reltarget', 'addr11', 'addr16', 'addr16p', 'sfr', 'sfrp',
+                 'imm16')
         for name in names:
             address = getattr(self, name, None)
             if address is not None:

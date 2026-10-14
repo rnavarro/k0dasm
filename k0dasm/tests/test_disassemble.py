@@ -1,7 +1,13 @@
+import contextlib
+import io
 import sys
 import unittest
 
 from k0dasm.disassemble import disassemble, FlowTypes, IllegalInstructionError
+from k0dasm.listing import Printer
+from k0dasm.memory import Memory
+from k0dasm.symbols import SymbolTable, D78F0831Y_SYMBOLS
+from k0dasm.trace import Tracer
 
 
 class disassemble_tests(unittest.TestCase):
@@ -2166,6 +2172,27 @@ class disassemble_tests(unittest.TestCase):
             mem = [opcode]
             with self.assertRaises(IllegalInstructionError):
                 disassemble(mem, pc=0)
+
+
+class symbol_definition_tests(unittest.TestCase):
+    def _listing(self, code, entry_point, symbols):
+        memory = Memory(bytearray(code))
+        tracer = Tracer(memory, [entry_point], [], range(0, len(code) + 1))
+        tracer.trace(disassemble)
+        symbol_table = SymbolTable(symbols)
+        symbol_table.generate(memory, 0)
+        printer = Printer(memory, 0, len(code) - 1, symbol_table)
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            printer.print_listing()
+        return output.getvalue()
+
+    def test_movw_imm16_symbol_is_defined(self):
+        # movw ax,#0xffc4 prints the SFR symbol c2txfifo, so the listing
+        # must also emit its definition or the output will not assemble.
+        listing = self._listing([0x10, 0xc4, 0xff], 0, D78F0831Y_SYMBOLS)
+        self.assertIn('movw ax,#c2txfifo', listing)
+        self.assertIn('c2txfifo = 0xffc4', listing)
 
 
 def test_suite():
